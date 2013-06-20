@@ -4,14 +4,10 @@ Created on Jun 19, 2013
 @author: wkulp
 '''
 
-import zipfile
+import rkIO
 import tempfile
 import os, shutil
-import csv
-import collections
 import functools, itertools
-from functools import partial
-from bs4 import BeautifulSoup
 from math import  sin, cos, acos, pi
 import simplekml
 
@@ -36,48 +32,6 @@ def greatCircleDistance(point1, point2):
     return arc * 6373*1000.0
 
 
-
-GPSPoint = collections.namedtuple('GPSPoint', ['lat', 'lon', 'ele', 'activity'])
-
-def GPSPointStr(self):
-    return '<GPSPoint(lat=' + str(self.lat) + ', lon=' + str(self.lon) + ', ele=' + str(self.ele) + ', activity=' + str(self.activity) + ')>'
-GPSPoint.__repr__ = GPSPointStr
-
-
-
-def _parseIndexFile(workdir):
-    print('Processing index file')
-    with open(workdir + os.sep + 'cardioActivities.csv', 'r') as f:
-        fieldnames = next(csv.reader(f)) # The first line contains field names
-        activities = [i for i in csv.DictReader(f, fieldnames)]
-    
-    # Only keep activities with an associated GPX file (empty strings in the lambda expression evaluate to False)
-    activities = [i for i in filter(lambda x:x['GPX File'], activities)]
-    
-    for i in range(0, len(activities)):
-        activities[i]['idx'] = i
-    
-    return activities
-
-
-def _trackpointToGPSPoint(trkpt, activity):
-    lat = float(trkpt['lat'])
-    lon = float(trkpt['lon'])
-    ele = float(trkpt.ele.text)
-    return GPSPoint(lat, lon, ele, int(activity['idx']))
-    
-def _rowToGPSPoint(row):
-    return GPSPoint(float(row[0]), float(row[1]), float(row[2]), int(row[3]))
-    
-def _readPointsFromActivity(activity, workdir):
-    print('Processing file: ' + activity['GPX File'])
-    with open(workdir + os.sep + activity['GPX File'], 'r') as f:
-        soup = BeautifulSoup(f.read())
-    
-    points = map(partial(_trackpointToGPSPoint, activity=activity), soup.find_all('trkpt'))
-    return [i for i in points]
-
-
 def _removeWithinRange(points, maxdist, sameactivity=False):
     npoints = len(points)
     keep = [True] * npoints
@@ -99,43 +53,10 @@ def _removeWithinRange(points, maxdist, sameactivity=False):
     
     return [point for i,point in enumerate(points) if keep[i]]
 
-def _savePoints(workdir, points, fiilename):
-    with open(workdir + os.sep + fiilename, 'w') as csvfile:
-        writer = csv.writer(csvfile, lineterminator='\n')
-        writer.writerows(points)
-    
-def _loadPoints(workdir, filename):
-    with open(workdir + os.sep + filename, 'r') as csvfile:
-        reader = csv.reader(csvfile, lineterminator='\n')
-        pts = map(_rowToGPSPoint, reader)
-        return [i for i in pts]
-    
-def _loadArchive(workdir, filename):
-    print('Extracting: ' + filename)
-    
-    # Extract the archive
-    with zipfile.ZipFile(filename) as zf:
-        for f in zf.namelist():
-            zf.extract(f, workdir)
 
-def _readAllPoints(workdir):
-    # Read the master activity index
-    activities = _parseIndexFile(workdir)
-    
-    # Parse the points associated with all activities
-    points = map(partial(_readPointsFromActivity, workdir=workdir), activities)
-    
-    # Reduce into a single list
-    points = [i for i in functools.reduce(itertools.chain, points)]
-    
-    _savePoints(workdir, points, 'rawpoints.csv')
-    
-    
-def _processPoints(workdir):
-    points = _loadPoints(workdir, 'rawpoints.csv')
-    activities = _parseIndexFile(workdir)
-    
+def processPoints(workdir, points):
     # Get unique activity types
+    activities = rkIO.parseIndexFile(workdir)
     types = set([a['Type'] for a in activities])
     
     # Filter points into activity types
@@ -159,15 +80,13 @@ def _processPoints(workdir):
         print('Pass 2 kept ' + str(n2) + '/' + str(n1))
     
     # Reduce into a single list
-    points = [i for i in functools.reduce(itertools.chain, filteredpoints)]
+    return [i for i in functools.reduce(itertools.chain, filteredpoints)]
     
-    
-    _savePoints(workdir, points, 'processedpoints.csv')
 
 
-def _writeOutput(workdir):
-    activities = _parseIndexFile(workdir)
-    gpspoints = _loadPoints(workdir, 'processedpoints.csv')
+def writeOutput(workdir, points):
+    activities = rkIO.parseIndexFile(workdir)
+    gpspoints = rkIO.loadPoints(workdir, 'processedpoints.csv')
     print('Writing KML document...')
     
     kml = simplekml.Kml(name='Runkeeper Heatmap')
@@ -205,13 +124,9 @@ def _writeOutput(workdir):
             pt.style = bikestyle
         else:
             pt.style = otherstyle
-            
-        #if i > 10:
-        #    break
     
     kml.save(workdir + os.sep + 'out.kml')
     import pdb;pdb.set_trace()
-    
 
 
 if __name__ == '__main__':
@@ -221,14 +136,17 @@ if __name__ == '__main__':
         workdir = r"C:\Users\wkulp\Documents\GitHub\RunkeeperMapper\data"
         print('Working dir: ' + workdir)
         
-        #_loadArchive(workdir, r"data\runkeeper-data-export-2338982-2013-06-19-1533.zip")
+        #rkIO.loadArchive(workdir, r"data\runkeeper-data-export-2338982-2013-06-19-1533.zip")
         
-        #_readAllPoints(workdir)
+        points = rkIO.readAllPoints(workdir)
+        rkIO.savePoints(workdir, points, 'rawpoints.csv')
         
-        _processPoints(workdir)
+        #points = processPoints(workdir, points)    
+        #rkIO.savePoints(workdir, points, 'processedpoints.csv')
         
-        _writeOutput(workdir)
-    
+        points = rkIO.loadPoints(workdir, 'processedpoints.csv')
+        writeOutput(workdir, points)
+        
         import pdb;pdb.set_trace()
     
     finally:
