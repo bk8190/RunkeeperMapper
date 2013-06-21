@@ -136,13 +136,15 @@ if __name__ == '__main__':
         workdir = r"C:\Users\wkulp\Documents\GitHub\RunkeeperMapper\data"
         print('Working dir: ' + workdir)
         
-        #rkIO.loadArchive(workdir, r"data\runkeeper-data-export-2338982-2013-06-19-1533.zip")
+        """
+        rkIO.loadArchive(workdir, r"data\runkeeper-data-export-2338982-2013-06-19-1533.zip")
         
         points = rkIO.readAllPoints(workdir)
         rkIO.savePoints(workdir, points, 'rawpoints.csv')
         
-        #points = processPoints(workdir, points)    
-        #rkIO.savePoints(workdir, points, 'processedpoints.csv')
+        points = processPoints(workdir, points)    
+        rkIO.savePoints(workdir, points, 'processedpoints.csv')
+        """
         
         points = rkIO.loadPoints(workdir, 'processedpoints.csv')
         writeOutput(workdir, points)
