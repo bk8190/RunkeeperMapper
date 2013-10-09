@@ -13,7 +13,7 @@ import multiprocessing
 import queue
 import time
 from bs4 import BeautifulSoup
-import parsing.GPSPoint as GPSPoint
+import GPSPoint as GPSPoint
 import os
 
 

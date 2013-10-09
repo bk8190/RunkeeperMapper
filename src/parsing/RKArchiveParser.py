@@ -4,8 +4,8 @@ Created on Jun 19, 2013
 @author: wkulp
 '''
 
-import parsing.rkIO as rkIO
-import parsing.GPSPoint as GPSPoint
+import rkIO as rkIO
+import GPSPoint as GPSPoint
 import tempfile
 import os, shutil
 import functools, itertools
@@ -87,10 +87,12 @@ if __name__ == '__main__':
     try:
         import timeit
         #workdir = tempfile.mkdtemp(prefix='RKWorking_')
-        workdir = r"C:\Users\wkulp\Documents\GitHub\RunkeeperMapper\data"
+        workdir = os.getcwd() + os.sep + 'work'
+		
+		#r"C:\Users\wkulp\Documents\GitHub\RunkeeperMapper\data"
         print('Working dir: ' + workdir)
         
-        rkIO.loadArchive(workdir, r"data\runkeeper-data-export-2338982-2013-06-19-1533.zip")
+        rkIO.loadArchive(workdir, 'data' + os.sep + 'data-2013-10-09-1728.zip')
         
         # Read the master activity list
         activities = rkIO.parseIndexFile(workdir)
@@ -115,3 +117,5 @@ if __name__ == '__main__':
     finally:
         #shutil.rmtree(workdir)
         pass
+	
+    import pdb;pdb.set_trace();
